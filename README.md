@@ -16,21 +16,7 @@ PyTorchモデルに対するLoRA（Low-Rank Adaptation）操作のためのユ�
 ### Gitリポジトリからインストール
 
 ```bash
-pip install git+https://github.com/yourusername/lora_utils.git
-```
-
-### ローカルディレクトリからインストール
-
-```bash
-pip install git+file:///path/to/lora_utils
-```
-
-### 開発用インストール
-
-```bash
-git clone https://github.com/yourusername/lora_utils.git
-cd lora_utils
-pip install -e .
+pip install git+https://github.com/msqrd6/lora_utils.git
 ```
 
 ## クイックスタート
