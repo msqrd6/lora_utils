@@ -166,72 +166,157 @@ original_model = remove_lora_from_model(model)
 
 ## APIリファレンス
 
-### `inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0, inject_layer_key=[], linear=True, conv2d=True)`
+### 関数
+
+#### `inject_init_lora_for_model()`
 
 モデルにLoRAレイヤーを初期化して注入します。
 
-**パラメータ:**
-- `model` (nn.Module): 対象のPyTorchモデル
-- `rank` (int): LoRAのrank（デフォルト: 4）
-- `alpha` (float): スケーリング係数（デフォルト: 1.0）
-- `dropout` (float): ドロップアウト率（デフォルト: 0.0）
-- `inject_layer_key` (list[str]): 注入するレイヤーをフィルタリングするキーワードのリスト（デフォルト: []）
-- `linear` (bool): Linearレイヤーに注入するかどうか（デフォルト: True）
-- `conv2d` (bool): Conv2dレイヤーに注入するかどうか（デフォルト: True）
+##### パラメータ
 
-**戻り値:**
+- `model` (nn.Module): 対象のPyTorchモデル
+- `rank` (int, optional): LoRAのrank（デフォルト: 4）
+- `alpha` (float, optional): スケーリング係数（デフォルト: 1.0）
+- `dropout` (float, optional): ドロップアウト率（デフォルト: 0.0）
+- `inject_layer_key` (list[str], optional): 注入するレイヤーをフィルタリングするキーワードのリスト（デフォルト: []）
+- `linear` (bool, optional): Linearレイヤーに注入するかどうか（デフォルト: True）
+- `conv2d` (bool, optional): Conv2dレイヤーに注入するかどうか（デフォルト: True）
+
+##### 戻り値
+
 - `dict`: ネットワークalphaの辞書
 
-### `inject_pretrained_lora_for_model(base_model, lora_state_dict, strength=1.0)`
+---
+
+#### `inject_pretrained_lora_for_model()`
 
 事前学習済みLoRA重みをベースモデルに注入します。
 
-**パラメータ:**
+##### パラメータ
+
 - `base_model` (nn.Module): ベースのPyTorchモデル
 - `lora_state_dict` (dict): LoRA状態辞書
-- `strength` (float): LoRA強度の乗数（デフォルト: 1.0）
+- `strength` (float, optional): LoRA強度の乗数（デフォルト: 1.0）
 
-### `marge_lora_and_weight(lora_state_dict, base_state_dict, strength=1.0)`
+---
+
+#### `marge_lora_and_weight()`
 
 LoRA重みとベースモデル重みをマージします。
 
-**パラメータ:**
+##### パラメータ
+
 - `lora_state_dict` (dict): LoRA状態辞書
 - `base_state_dict` (dict): ベースモデル状態辞書
-- `strength` (float): LoRA強度の乗数（デフォルト: 1.0）
+- `strength` (float, optional): LoRA強度の乗数（デフォルト: 1.0）
 
-**戻り値:**
+##### 戻り値
+
 - `dict`: マージ済み状態辞書
 
-### `get_lora_dict_from_model(model, get_model_dict=False)`
+---
+
+#### `get_lora_dict_from_model()`
 
 モデルからLoRA重みを抽出します。
 
-**パラメータ:**
-- `model` (nn.Module): LoRAレイヤーを持つモデル
-- `get_model_dict` (bool): ベースモデル重みも返すかどうか（デフォルト: False）
+##### パラメータ
 
-**戻り値:**
+- `model` (nn.Module): LoRAレイヤーを持つモデル
+- `get_model_dict` (bool, optional): ベースモデル重みも返すかどうか（デフォルト: False）
+
+##### 戻り値
+
 - `dict` または `tuple`: LoRA状態辞書、または`get_model_dict=True`の場合は（LoRA状態辞書, モデル状態辞書）
 
-### `remove_lora_from_model(model)`
+---
+
+#### `remove_lora_from_model()`
 
 モデルからLoRAレイヤーを削除して元のモデルに戻します。
 
-**パラメータ:**
+##### パラメータ
+
 - `model` (nn.Module): LoRAレイヤーを持つモデル
 
-**戻り値:**
+##### 戻り値
+
 - `nn.Module`: LoRAレイヤーが削除されたモデル
 
-### `LoRA` クラス
+---
+
+#### `get_module_by_key()`
+
+モデルから指定されたキーのモジュールを取得します。
+
+##### パラメータ
+
+- `model` (nn.Module): 対象のPyTorchモデル
+- `key` (str): モジュールのキー（ドット区切り）
+
+##### 戻り値
+
+- `tuple`: (親モジュール, 最後のキー名)
+
+---
+
+#### `inject_empty_lora_layer()`
+
+指定されたモジュールに空のLoRAレイヤーを注入します。既にLoRAレイヤーが存在する場合は既存のレイヤーを返します。
+
+##### パラメータ
+
+- `model` (nn.Module): 対象のPyTorchモデル
+- `module_name` (str): モジュール名（ドット区切り）
+
+##### 戻り値
+
+- `LoRA`: 注入されたLoRAレイヤー
+
+---
+
+### クラス
+
+#### `LoRA`
 
 LoRA機能でベースレイヤーをラップするPyTorchモジュールです。
 
-**メソッド:**
-- `append_lora_layer(rank, alpha, strength=1.0, dropout=0.0)`: 新しいLoRAレイヤーを追加
-- `load_weight(lora_A, lora_B, strength=1.0, alpha=1.0, dropout=0.0)`: 事前学習済みLoRA重みを読み込み
-- `forward(x)`: ベースレイヤーとLoRAレイヤーを組み合わせた順伝播
+##### 初期化パラメータ
+
+- `base_layer` (nn.Module): ラップする元のレイヤー（nn.Linearまたはnn.Conv2d）
+
+##### 主要メソッド
+
+##### `append_lora_layer(rank, alpha, strength=1.0, dropout=0.0)`
+
+新しいLoRAレイヤーを追加します。複数のLoRAレイヤーを同じベースレイヤーに追加できます。
+
+**パラメータ:**
+- `rank` (int): LoRAのrank
+- `alpha` (float): スケーリング係数
+- `strength` (float, optional): LoRA強度の乗数（デフォルト: 1.0）
+- `dropout` (float, optional): ドロップアウト率（デフォルト: 0.0）
+
+##### `load_weight(lora_A, lora_B, strength=1.0, alpha=1.0, dropout=0.0)`
+
+事前学習済みLoRA重みを読み込みます。
+
+**パラメータ:**
+- `lora_A` (torch.Tensor): LoRA A行列の重み
+- `lora_B` (torch.Tensor): LoRA B行列の重み
+- `strength` (float, optional): LoRA強度の乗数（デフォルト: 1.0）
+- `alpha` (float, optional): スケーリング係数（デフォルト: 1.0）
+- `dropout` (float, optional): ドロップアウト率（デフォルト: 0.0）
+
+##### `forward(x)`
+
+ベースレイヤーとLoRAレイヤーを組み合わせた順伝播を実行します。
+
+**パラメータ:**
+- `x` (torch.Tensor): 入力テンソル
+
+**戻り値:**
+- `torch.Tensor`: 出力テンソル
 
 ## 必要要件
 
