@@ -75,6 +75,14 @@ network_alphas = inject_init_lora_for_model(
     alpha=2.0,
     inject_layer_key=["attention", "mlp"]  # これらのキーワードを含むレイヤーのみに注入
 )
+
+# Linearレイヤーのみに注入（Conv2dを除外）
+network_alphas = inject_init_lora_for_model(
+    model,
+    rank=4,
+    alpha=1.0,
+    only_linear=True  # Linearレイヤーのみに注入
+)
 ```
 
 ### 2. 事前学習済みLoRA重みの読み込み
@@ -136,7 +144,7 @@ lora_state_dict, model_state_dict = separate_lora_from_model(
 
 ## APIリファレンス
 
-### `inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0, inject_layer_key=[])`
+### `inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0, inject_layer_key=[], only_linear=False)`
 
 モデルにLoRAレイヤーを初期化して注入します。
 
@@ -146,6 +154,7 @@ lora_state_dict, model_state_dict = separate_lora_from_model(
 - `alpha` (float): スケーリング係数（デフォルト: 1.0）
 - `dropout` (float): ドロップアウト率（デフォルト: 0.0）
 - `inject_layer_key` (list[str]): 注入するレイヤーをフィルタリングするキーワードのリスト（デフォルト: []）
+- `only_linear` (bool): Trueの場合、Linearレイヤーのみに注入（Conv2dを除外）（デフォルト: False）
 
 **戻り値:**
 - `dict`: ネットワークalphaの辞書
@@ -198,4 +207,4 @@ LoRA機能でベースレイヤーをラップするPyTorchモジュールです
 
 ## ライセンス
 
-MIT [LICENSE](LICENSE)
+[MIT License](LICENSE)

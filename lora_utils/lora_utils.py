@@ -4,7 +4,7 @@ from copy import deepcopy
 from .modules import LoRA
 
 
-def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_layer_key:list[str]=[]):
+def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_layer_key:list[str]=[],only_linear:bool=False):
     network_alphas = {}
 
    #loraを注入する層か判定
@@ -21,7 +21,9 @@ def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_laye
 
     for module_name, module in model.named_modules():
         if needs_lora_injection(module_name):
-            if isinstance(module,(nn.Linear,nn.Conv2d)):
+            if isinstance(module,(nn.Linear,nn.Conv2d)) and not only_linear:
+                target_modules.append((module_name,module))
+            elif isinstance(module,nn.Linear):
                 target_modules.append((module_name,module))
     
     for module_name, module in target_modules:
@@ -34,7 +36,6 @@ def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_laye
     return network_alphas
     
 
-
 def get_module_by_key(model, key):
     parts = key.split('.')
     module = model
@@ -44,6 +45,7 @@ def get_module_by_key(model, key):
         else:
             module = getattr(module, p)
     return module, parts[-1]
+
 
 def inject_empty_lora_layer(model,module_name):
     parent_module = model
