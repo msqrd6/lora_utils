@@ -11,34 +11,42 @@ class LoRA(nn.Module):
         self.dropouts = nn.ModuleList() # Dropout層を保持
         self.lora_A = nn.ModuleList()
         self.lora_B = nn.ModuleList()
+        self.alpha = nn.ParameterList()
 
         for param in self.base_layer.parameters():
             param.requires_grad = False
 
-    def init_lora(self,rank,alpha,dropout=0.0):
-        self.scales.append(alpha / rank if rank > 0 else 1.0)
+    def append_lora_layer(self,rank,alpha,strength=1.0,dropout=0.0):
+        device = self.base_layer.weight.device
+        dtype = self.base_layer.weight.dtype
+        self.scales.append(strength * (alpha / rank) if rank > 0 else 1.0)
         self.dropouts.append(nn.Dropout(dropout) if dropout > 0.0 else nn.Identity())
+        
+        alpha_tensor = alpha.detach().clone().float() if isinstance(alpha,torch.Tensor) else torch.tensor(alpha, dtype=torch.float32)
+        alpha_tensor = alpha_tensor.to(device=device,dtype=dtype)
+        self.alpha.append(nn.Parameter(alpha_tensor,requires_grad=False))
 
         if isinstance(self.base_layer, nn.Linear):
-            self.lora_A.append(nn.Linear(self.base_layer.in_features, rank, bias=False))
-            self.lora_B.append(nn.Linear(rank, self.base_layer.out_features, bias=False))
+            a = nn.Linear(self.base_layer.in_features, rank, bias=False)
+            b = nn.Linear(rank, self.base_layer.out_features, bias=False)
         elif isinstance(self.base_layer, nn.Conv2d):
-            self.lora_A.append(nn.Conv2d(self.base_layer.in_channels, rank, kernel_size=1, bias=False))
-            self.lora_B.append(
-                nn.Conv2d(rank, self.base_layer.out_channels, kernel_size=1, stride=self.base_layer.stride, padding=self.base_layer.padding, bias=False)
-            )
+            a = nn.Conv2d(self.base_layer.in_channels, rank, kernel_size=1, bias=False)
+            b = nn.Conv2d(rank, self.base_layer.out_channels, kernel_size=1, stride=self.base_layer.stride, padding=self.base_layer.padding, bias=False)
+        else:
+            return
+        
+        self.lora_A.append(a.to(device=device,dtype=dtype))
+        self.lora_B.append(b.to(device=device,dtype=dtype))
 
         nn.init.kaiming_uniform_(self.lora_A[-1].weight, a=math.sqrt(5))
         nn.init.zeros_(self.lora_B[-1].weight)
 
-
-    def load_weight(self, lora_A, lora_B, strength=1.0, alpha=1.0, dropout=0.0, idx=None):
-        idx = -1 if idx is None else idx
+    def load_weight(self, lora_A, lora_B, strength=1.0, alpha=1.0, dropout=0.0):
         rank = lora_A.shape[0]
-        alpha = alpha*strength
-        self.init_lora(rank,alpha,dropout)
-        self.lora_A[idx].weight.data.copy_(lora_A)
-        self.lora_B[idx].weight.data.copy_(lora_B)
+        self.append_lora_layer(rank,alpha,strength,dropout)
+        self.alpha[-1].data.fill_(float(alpha))
+        self.lora_A[-1].weight.data.copy_(lora_A)
+        self.lora_B[-1].weight.data.copy_(lora_B)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         w = self.base_layer(x)

@@ -8,6 +8,7 @@ PyTorchモデルに対するLoRA（Low-Rank Adaptation）操作のためのユ�
 - **事前学習済みLoRAの読み込み**: 事前学習済みLoRA重みの読み込みと適用
 - **重みのマージ**: LoRA重みとベースモデル重みのマージ
 - **状態辞書の分離**: 学習済みモデルからLoRA重みを抽出
+- **LoRAの削除**: モデルからLoRAレイヤーを削除して元のモデルに戻す
 - **柔軟な設定**: カスタムrank、alpha、dropoutパラメータのサポート
 - **複数のレイヤータイプ**: `nn.Linear`と`nn.Conv2d`の両方のレイヤーに対応
 
@@ -24,7 +25,7 @@ pip install git+https://github.com/msqrd6/lora_utils.git
 ```python
 import torch
 import torch.nn as nn
-from lora_utils import inject_init_lora_for_model, separate_lora_from_model
+from lora_utils import inject_init_lora_for_model, get_lora_dict_from_model
 
 # シンプルなモデルを作成
 model = nn.Sequential(
@@ -45,7 +46,7 @@ network_alphas = inject_init_lora_for_model(
 # ...
 
 # LoRA重みを抽出
-lora_state_dict = separate_lora_from_model(model)
+lora_state_dict = get_lora_dict_from_model(model)
 
 # LoRA重みを保存
 torch.save(lora_state_dict, "lora_weights.pt")
@@ -140,16 +141,27 @@ model.load_state_dict(merged_state_dict)
 学習済みモデルからLoRA重みを分離:
 
 ```python
-from lora_utils import separate_lora_from_model
+from lora_utils import get_lora_dict_from_model
 
 # LoRA重みのみを抽出
-lora_state_dict = separate_lora_from_model(model)
+lora_state_dict = get_lora_dict_from_model(model)
 
 # LoRAとベースモデルの両方の重みを抽出
-lora_state_dict, model_state_dict = separate_lora_from_model(
+lora_state_dict, model_state_dict = get_lora_dict_from_model(
     model,
-    out_model_state_dict=True
+    get_model_dict=True
 )
+```
+
+### 5. モデルからLoRAを削除
+
+モデルからLoRAレイヤーを削除して元のモデルに戻す:
+
+```python
+from lora_utils import remove_lora_from_model
+
+# LoRAレイヤーを削除
+original_model = remove_lora_from_model(model)
 ```
 
 ## APIリファレンス
@@ -191,24 +203,34 @@ LoRA重みとベースモデル重みをマージします。
 **戻り値:**
 - `dict`: マージ済み状態辞書
 
-### `separate_lora_from_model(model, out_model_state_dict=False)`
+### `get_lora_dict_from_model(model, get_model_dict=False)`
 
 モデルからLoRA重みを抽出します。
 
 **パラメータ:**
 - `model` (nn.Module): LoRAレイヤーを持つモデル
-- `out_model_state_dict` (bool): ベースモデル重みも返すかどうか（デフォルト: False）
+- `get_model_dict` (bool): ベースモデル重みも返すかどうか（デフォルト: False）
 
 **戻り値:**
-- `dict` または `tuple`: LoRA状態辞書、または`out_model_state_dict=True`の場合は（LoRA状態辞書, モデル状態辞書）
+- `dict` または `tuple`: LoRA状態辞書、または`get_model_dict=True`の場合は（LoRA状態辞書, モデル状態辞書）
+
+### `remove_lora_from_model(model)`
+
+モデルからLoRAレイヤーを削除して元のモデルに戻します。
+
+**パラメータ:**
+- `model` (nn.Module): LoRAレイヤーを持つモデル
+
+**戻り値:**
+- `nn.Module`: LoRAレイヤーが削除されたモデル
 
 ### `LoRA` クラス
 
 LoRA機能でベースレイヤーをラップするPyTorchモジュールです。
 
 **メソッド:**
-- `init_lora(rank, alpha, dropout=0.0)`: 新しいLoRAレイヤーを初期化
-- `load_weight(lora_A, lora_B, strength=1.0, alpha=1.0, dropout=0.0, idx=None)`: 事前学習済みLoRA重みを読み込み
+- `append_lora_layer(rank, alpha, strength=1.0, dropout=0.0)`: 新しいLoRAレイヤーを追加
+- `load_weight(lora_A, lora_B, strength=1.0, alpha=1.0, dropout=0.0)`: 事前学習済みLoRA重みを読み込み
 - `forward(x)`: ベースレイヤーとLoRAレイヤーを組み合わせた順伝播
 
 ## 必要要件
