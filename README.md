@@ -198,4 +198,4 @@ LoRA機能でベースレイヤーをラップするPyTorchモジュールです
 
 ## ライセンス
 
-このプロジェクトはMITライセンスの下でライセンスされています - 詳細は[LICENSE](LICENSE)ファイルを参照してください。
+MIT [LICENSE](LICENSE)
