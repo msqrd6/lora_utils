@@ -4,7 +4,7 @@ from copy import deepcopy
 from .modules import LoRA
 
 
-def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_layer_key:list[str]=[],only_linear:bool=False):
+def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_layer_key:list[str]=[],linear:bool=True,conv2d:bool=True):
     network_alphas = {}
 
    #loraを注入する層か判定
@@ -21,11 +21,13 @@ def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_laye
 
     for module_name, module in model.named_modules():
         if needs_lora_injection(module_name):
-            if isinstance(module,(nn.Linear,nn.Conv2d)) and not only_linear:
-                target_modules.append((module_name,module))
-            elif isinstance(module,nn.Linear):
-                target_modules.append((module_name,module))
-    
+            if linear:
+                if isinstance(module,nn.Linear):
+                    target_modules.append((module_name,module))
+            if conv2d:
+                if isinstance(module,nn.Conv2d):
+                    target_modules.append((module_name,module))
+
     for module_name, module in target_modules:
             network_alphas[module_name+".alpha"] = torch.tensor(alpha)
             lora_layer = inject_empty_lora_layer(model,module_name)

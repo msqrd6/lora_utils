@@ -81,7 +81,17 @@ network_alphas = inject_init_lora_for_model(
     model,
     rank=4,
     alpha=1.0,
-    only_linear=True  # Linearレイヤーのみに注入
+    linear=True,
+    conv2d=False  # Conv2dレイヤーを除外
+)
+
+# Conv2dレイヤーのみに注入（Linearを除外）
+network_alphas = inject_init_lora_for_model(
+    model,
+    rank=4,
+    alpha=1.0,
+    linear=False,  # Linearレイヤーを除外
+    conv2d=True
 )
 ```
 
@@ -144,7 +154,7 @@ lora_state_dict, model_state_dict = separate_lora_from_model(
 
 ## APIリファレンス
 
-### `inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0, inject_layer_key=[], only_linear=False)`
+### `inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0, inject_layer_key=[], linear=True, conv2d=True)`
 
 モデルにLoRAレイヤーを初期化して注入します。
 
@@ -154,7 +164,8 @@ lora_state_dict, model_state_dict = separate_lora_from_model(
 - `alpha` (float): スケーリング係数（デフォルト: 1.0）
 - `dropout` (float): ドロップアウト率（デフォルト: 0.0）
 - `inject_layer_key` (list[str]): 注入するレイヤーをフィルタリングするキーワードのリスト（デフォルト: []）
-- `only_linear` (bool): Trueの場合、Linearレイヤーのみに注入（Conv2dを除外）（デフォルト: False）
+- `linear` (bool): Linearレイヤーに注入するかどうか（デフォルト: True）
+- `conv2d` (bool): Conv2dレイヤーに注入するかどうか（デフォルト: True）
 
 **戻り値:**
 - `dict`: ネットワークalphaの辞書
