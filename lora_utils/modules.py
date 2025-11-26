@@ -2,6 +2,28 @@ import torch
 import torch.nn as nn
 import math
 
+class BufferList(nn.Module):
+    """
+    nn.ParameterListのように振る舞うが、中身をBuffer(学習対象外)として管理するクラス。
+    state_dict上では 'alpha.0', 'alpha.1' のようなキーになります。
+    """
+    def __init__(self):
+        super().__init__()
+        
+    def append(self, tensor):
+        # 現在の要素数を名前にして登録 ("0", "1", "2"...)
+        # これにより 親.alpha.0 という名前が生成される
+        name = str(len(self._buffers))
+        self.register_buffer(name, tensor)
+        
+    def __getitem__(self, idx):
+        # alpha[i] でアクセス可能にする
+        if idx < 0:
+            idx = len(self._buffers) + idx
+        return getattr(self, str(idx))
+
+    def __len__(self):
+        return len(self._buffers)
 
 class LoRA(nn.Module):
     def __init__(self, base_layer: nn.Module):
@@ -11,7 +33,7 @@ class LoRA(nn.Module):
         self.dropouts = nn.ModuleList() # Dropout層を保持
         self.lora_A = nn.ModuleList()
         self.lora_B = nn.ModuleList()
-        self.alpha = nn.ParameterList()
+        self.alpha = BufferList()
 
         for param in self.base_layer.parameters():
             param.requires_grad = False
@@ -24,7 +46,9 @@ class LoRA(nn.Module):
         
         alpha_tensor = alpha.detach().clone().float() if isinstance(alpha,torch.Tensor) else torch.tensor(alpha, dtype=torch.float32)
         alpha_tensor = alpha_tensor.to(device=device,dtype=dtype)
-        self.alpha.append(nn.Parameter(alpha_tensor,requires_grad=False))
+        #self.alpha.append(nn.Parameter(alpha_tensor,requires_grad=False))
+        self.alpha.append(alpha_tensor.to(device=device,dtype=dtype))
+
 
         if isinstance(self.base_layer, nn.Linear):
             a = nn.Linear(self.base_layer.in_features, rank, bias=False)

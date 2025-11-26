@@ -47,3 +47,6 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+#.py
+a.py
