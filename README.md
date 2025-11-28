@@ -35,7 +35,7 @@ model = nn.Sequential(
 )
 
 # rank=4でLoRAレイヤーを注入
-network_alphas = inject_init_lora_for_model(
+inject_init_lora_for_model(
     model, 
     rank=4, 
     alpha=1.0, 
@@ -62,7 +62,7 @@ torch.save(lora_state_dict, "lora_weights.pt")
 from lora_utils import inject_init_lora_for_model
 
 # すべてのLinearとConv2dレイヤーにLoRAを注入
-network_alphas = inject_init_lora_for_model(
+inject_init_lora_for_model(
     model,
     rank=4,           # LoRAのrank
     alpha=1.0,        # スケーリング係数
@@ -70,7 +70,7 @@ network_alphas = inject_init_lora_for_model(
 )
 
 # 特定のレイヤーのみにLoRAを注入
-network_alphas = inject_init_lora_for_model(
+inject_init_lora_for_model(
     model,
     rank=8,
     alpha=2.0,
@@ -78,7 +78,7 @@ network_alphas = inject_init_lora_for_model(
 )
 
 # Linearレイヤーのみに注入（Conv2dを除外）
-network_alphas = inject_init_lora_for_model(
+inject_init_lora_for_model(
     model,
     rank=4,
     alpha=1.0,
@@ -87,7 +87,7 @@ network_alphas = inject_init_lora_for_model(
 )
 
 # Conv2dレイヤーのみに注入（Linearを除外）
-network_alphas = inject_init_lora_for_model(
+inject_init_lora_for_model(
     model,
     rank=4,
     alpha=1.0,
@@ -184,7 +184,7 @@ original_model = remove_lora_from_model(model)
 
 ##### 戻り値
 
-- `dict`: ネットワークalphaの辞書
+- なし（モデルが直接変更されます）
 
 ---
 
@@ -242,36 +242,6 @@ LoRA重みとベースモデル重みをマージします。
 ##### 戻り値
 
 - `nn.Module`: LoRAレイヤーが削除されたモデル
-
----
-
-#### `get_module_by_key()`
-
-モデルから指定されたキーのモジュールを取得します。
-
-##### パラメータ
-
-- `model` (nn.Module): 対象のPyTorchモデル
-- `key` (str): モジュールのキー（ドット区切り）
-
-##### 戻り値
-
-- `tuple`: (親モジュール, 最後のキー名)
-
----
-
-#### `inject_empty_lora_layer()`
-
-指定されたモジュールに空のLoRAレイヤーを注入します。既にLoRAレイヤーが存在する場合は既存のレイヤーを返します。
-
-##### パラメータ
-
-- `model` (nn.Module): 対象のPyTorchモデル
-- `module_name` (str): モジュール名（ドット区切り）
-
-##### 戻り値
-
-- `LoRA`: 注入されたLoRAレイヤー
 
 ---
 

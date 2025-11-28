@@ -1,20 +1,82 @@
 import torch
 import torch.nn as nn
 from copy import deepcopy
-from .modules import LoRA
+import math
 
-def get_module_by_key(model, key):
-    parts = key.split('.')
-    module = model
-    for p in parts[:-1]:
-        if p.isdigit():
-            module = module[int(p)]
+class BufferList(nn.Module):
+    def __init__(self):
+        super().__init__()
+        
+    def append(self, tensor):
+        name = str(len(self._buffers))
+        self.register_buffer(name, tensor)
+        
+    def __getitem__(self, idx):
+        # alpha[i] でアクセス可能にする
+        if idx < 0:
+            idx = len(self._buffers) + idx
+        return getattr(self, str(idx))
+
+    def __len__(self):
+        return len(self._buffers)
+
+class LoRA(nn.Module):
+    def __init__(self, base_layer: nn.Module):
+        super().__init__()
+        self.base_layer = base_layer
+        self.scales = []
+        self.dropouts = nn.ModuleList() 
+        self.lora_A = nn.ModuleList()
+        self.lora_B = nn.ModuleList()
+        self.alpha = BufferList()
+
+        for param in self.base_layer.parameters():
+            param.requires_grad = False
+
+    def append_lora_layer(self,rank,alpha,strength=1.0,dropout=0.0):
+        device = self.base_layer.weight.device
+        dtype = self.base_layer.weight.dtype
+        self.scales.append(strength * (alpha / rank) if rank > 0 else 1.0)
+        self.dropouts.append(nn.Dropout(dropout) if dropout > 0.0 else nn.Identity())
+        
+        alpha_tensor = alpha.detach().clone().float() if isinstance(alpha,torch.Tensor) else torch.tensor(alpha, dtype=torch.float32)
+        alpha_tensor = alpha_tensor.to(device=device,dtype=dtype)
+        self.alpha.append(alpha_tensor.to(device=device,dtype=dtype))
+
+        if isinstance(self.base_layer, nn.Linear):
+            a = nn.Linear(self.base_layer.in_features, rank, bias=False)
+            b = nn.Linear(rank, self.base_layer.out_features, bias=False)
+        elif isinstance(self.base_layer, nn.Conv2d):
+            a = nn.Conv2d(self.base_layer.in_channels, rank, kernel_size=1, bias=False)
+            b = nn.Conv2d(rank, self.base_layer.out_channels, kernel_size=1, stride=self.base_layer.stride, padding=self.base_layer.padding, bias=False)
         else:
-            module = getattr(module, p)
-    return module, parts[-1]
+            return
+        
+        self.lora_A.append(a.to(device=device,dtype=dtype))
+        self.lora_B.append(b.to(device=device,dtype=dtype))
 
+        nn.init.kaiming_uniform_(self.lora_A[-1].weight, a=math.sqrt(5))
+        nn.init.zeros_(self.lora_B[-1].weight)
 
-def inject_empty_lora_layer(model,module_name):
+    def load_weight(self, lora_A, lora_B, strength=1.0, alpha=1.0, dropout=0.0):
+        rank = lora_A.shape[0]
+        self.append_lora_layer(rank,alpha,strength,dropout)
+        self.alpha[-1].data.fill_(float(alpha))
+        self.lora_A[-1].weight.data.copy_(lora_A)
+        self.lora_B[-1].weight.data.copy_(lora_B)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        w = self.base_layer(x)
+
+        for i in range(len(self.lora_A)):
+            a_module, b_module = self.lora_A[i], self.lora_B[i]
+            scale = self.scales[i]
+            dropout = self.dropouts[i]
+            w += scale * dropout(b_module(a_module(x)))
+        
+        return w
+
+def _inject_empty_lora_layer(model,module_name):
     parent_module = model
     path = module_name.split(".")
     for p in path[:-1]:
@@ -32,8 +94,6 @@ def inject_empty_lora_layer(model,module_name):
 
 
 def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_layer_key:list[str]=[],linear:bool=True,conv2d:bool=True):
-    network_alphas = {}
-
    #loraを注入する層か判定
     def needs_lora_injection(module_name):
         if len(inject_layer_key) == 0:
@@ -55,12 +115,13 @@ def inject_init_lora_for_model(model, rank=4, alpha=1.0, dropout=0.0,inject_laye
                 if isinstance(module,nn.Conv2d):
                     target_modules.append((module_name,module))
 
-    for module_name, module in target_modules:
-            network_alphas[module_name+".alpha"] = torch.tensor(alpha)
-            lora_layer = inject_empty_lora_layer(model,module_name)
-            lora_layer.append_lora_layer(rank,alpha,dropout)
 
-    return network_alphas
+    for module_name, module in target_modules:
+            #network_alphas[module_name+".alpha"] = torch.tensor(alpha)
+            lora_layer = _inject_empty_lora_layer(model,module_name)
+            lora_layer.append_lora_layer(rank,alpha,strength=1.0,dropout=dropout)
+
+    #return network_alphas
 
 
 def inject_pretrained_lora_for_model(base_model,lora_state_dict,strength=1.0):
@@ -73,8 +134,10 @@ def inject_pretrained_lora_for_model(base_model,lora_state_dict,strength=1.0):
         # .alphaが存在しない場合はrank/2を代入
         alpha = lora_state_dict.get(base_key + '.alpha', rank/2)
         
-        lora_layer = inject_empty_lora_layer(base_model,base_key)
+        lora_layer = _inject_empty_lora_layer(base_model,base_key)
         lora_layer.load_weight(lora_A,lora_B,strength,alpha)
+    
+    base_model.requires_grad_(False)
 
 def remove_lora_from_model(model):
 

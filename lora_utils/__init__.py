@@ -5,5 +5,4 @@ This package provides tools for injecting, managing, and manipulating LoRA layer
 in neural network models, particularly for fine-tuning large models efficiently.
 """
 
-from .modules import LoRA
 from .lora_utils import *
