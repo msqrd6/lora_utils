@@ -25,7 +25,7 @@ pip install git+https://github.com/msqrd6/lora_utils.git
 ```python
 import torch
 import torch.nn as nn
-from lora_utils import inject_init_lora_for_model, get_lora_dict_from_model
+from lora_utils import inject_lora, get_lora_state_dict
 
 # シンプルなモデルを作成
 model = nn.Sequential(
@@ -35,7 +35,7 @@ model = nn.Sequential(
 )
 
 # rank=4でLoRAレイヤーを注入
-inject_init_lora_for_model(
+inject_lora(
     model, 
     rank=4, 
     alpha=1.0, 
@@ -46,7 +46,7 @@ inject_init_lora_for_model(
 # ...
 
 # LoRA重みを抽出
-lora_state_dict = get_lora_dict_from_model(model)
+lora_state_dict = get_lora_state_dict(model)
 
 # LoRA重みを保存
 torch.save(lora_state_dict, "lora_weights.pt")
@@ -59,10 +59,10 @@ torch.save(lora_state_dict, "lora_weights.pt")
 学習用にモデルにLoRAレイヤーを注入:
 
 ```python
-from lora_utils import inject_init_lora_for_model
+from lora_utils import inject_lora
 
 # すべてのLinearとConv2dレイヤーにLoRAを注入
-inject_init_lora_for_model(
+inject_lora(
     model,
     rank=4,           # LoRAのrank
     alpha=1.0,        # スケーリング係数
@@ -70,7 +70,7 @@ inject_init_lora_for_model(
 )
 
 # 特定のレイヤーのみにLoRAを注入
-inject_init_lora_for_model(
+inject_lora(
     model,
     rank=8,
     alpha=2.0,
@@ -78,7 +78,7 @@ inject_init_lora_for_model(
 )
 
 # Linearレイヤーのみに注入（Conv2dを除外）
-inject_init_lora_for_model(
+inject_lora(
     model,
     rank=4,
     alpha=1.0,
@@ -87,7 +87,7 @@ inject_init_lora_for_model(
 )
 
 # Conv2dレイヤーのみに注入（Linearを除外）
-inject_init_lora_for_model(
+inject_lora(
     model,
     rank=4,
     alpha=1.0,
@@ -101,13 +101,13 @@ inject_init_lora_for_model(
 ベースモデルに事前学習済みLoRA重みを適用:
 
 ```python
-from lora_utils import inject_pretrained_lora_for_model
+from lora_utils import load_lora
 
 # LoRA状態辞書を読み込み
 lora_state_dict = torch.load("lora_weights.pt")
 
 # 事前学習済みLoRAをモデルに注入
-inject_pretrained_lora_for_model(
+load_lora(
     base_model,
     lora_state_dict,
     strength=1.0  # LoRAの強度を調整（0.0〜1.0以上）
@@ -141,13 +141,13 @@ model.load_state_dict(merged_state_dict)
 学習済みモデルからLoRA重みを分離:
 
 ```python
-from lora_utils import get_lora_dict_from_model
+from lora_utils import get_lora_state_dict
 
 # LoRA重みのみを抽出
-lora_state_dict = get_lora_dict_from_model(model)
+lora_state_dict = get_lora_state_dict(model)
 
 # LoRAとベースモデルの両方の重みを抽出
-lora_state_dict, model_state_dict = get_lora_dict_from_model(
+lora_state_dict, model_state_dict = get_lora_state_dict(
     model,
     get_model_dict=True
 )
@@ -158,17 +158,17 @@ lora_state_dict, model_state_dict = get_lora_dict_from_model(
 モデルからLoRAレイヤーを削除して元のモデルに戻す:
 
 ```python
-from lora_utils import remove_lora_from_model
+from lora_utils import unload_lora
 
 # LoRAレイヤーを削除
-original_model = remove_lora_from_model(model)
+original_model = unload_lora(model)
 ```
 
 ## APIリファレンス
 
 ### 関数
 
-#### `inject_init_lora_for_model()`
+#### `inject_lora()`
 
 モデルにLoRAレイヤーを初期化して注入します。
 
@@ -188,7 +188,7 @@ original_model = remove_lora_from_model(model)
 
 ---
 
-#### `inject_pretrained_lora_for_model()`
+#### `load_lora()`
 
 事前学習済みLoRA重みをベースモデルに注入します。
 
@@ -197,6 +197,10 @@ original_model = remove_lora_from_model(model)
 - `base_model` (nn.Module): ベースのPyTorchモデル
 - `lora_state_dict` (dict): LoRA状態辞書
 - `strength` (float, optional): LoRA強度の乗数（デフォルト: 1.0）
+
+##### 戻り値
+
+- なし（モデルが直接変更されます）
 
 ---
 
@@ -216,7 +220,7 @@ LoRA重みとベースモデル重みをマージします。
 
 ---
 
-#### `get_lora_dict_from_model()`
+#### `get_lora_state_dict()`
 
 モデルからLoRA重みを抽出します。
 
@@ -231,7 +235,7 @@ LoRA重みとベースモデル重みをマージします。
 
 ---
 
-#### `remove_lora_from_model()`
+#### `unload_lora()`
 
 モデルからLoRAレイヤーを削除して元のモデルに戻します。
 
