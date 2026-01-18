@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lora-utils"
-version = "0.1.3"
+version = "0.1.4"
 description = "A utility library for LoRA (Low-Rank Adaptation) operations with PyTorch models"
 requires-python = ">=3.9"
 license = {text = "MIT"}

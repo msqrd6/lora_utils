@@ -122,7 +122,7 @@ def inject_lora(model, rank=4, alpha=1.0, dropout=0.0,inject_layer_key:list[str]
 
 
 
-def load_lora(base_model,lora_state_dict,strength=1.0):
+def load_lora(base_model,lora_state_dict,strength=1.0,lora_requires_grad=False):
     for key, value in lora_state_dict.items():
         if not "lora_A" in key: continue
         base_key = key.split(".lora_A.")[0]
@@ -135,7 +135,10 @@ def load_lora(base_model,lora_state_dict,strength=1.0):
         lora_layer = _inject_empty_lora_layer(base_model,base_key)
         lora_layer.load_weight(lora_A,lora_B,strength,alpha)
     
-    base_model.requires_grad_(False)
+    if not lora_requires_grad:
+        base_model.requires_grad_(False)
+
+    return base_model
 
 def unload_lora(model):
 

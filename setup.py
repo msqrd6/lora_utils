@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="lora-utils",
-    version="0.1.3",
+    version="0.1.4",
     author="msqrd6",
     description="A utility library for LoRA (Low-Rank Adaptation) operations with PyTorch models",
     url="https://github.com/msqrd6/lora_utils",
